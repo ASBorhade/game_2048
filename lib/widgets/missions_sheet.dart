@@ -212,6 +212,8 @@ class _MissionsSheetState extends State<MissionsSheet>
   }
 
   Widget _buildAchievementCard(Achievement ach, GameThemeType theme, bool isClassic) {
+    final isReadyToClaim = ach.isUnlocked && !ach.isClaimed;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
@@ -219,9 +221,8 @@ class _MissionsSheetState extends State<MissionsSheet>
         color: isClassic ? const Color(0xFFEDE0C8) : const Color(0x20FFFFFF),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: ach.isUnlocked && !ach.isClaimed
-              ? const Color(0xFFFFD700)
-              : Colors.white10,
+          color: isReadyToClaim ? const Color(0xFFFFD700) : Colors.white10,
+          width: isReadyToClaim ? 1.5 : 1,
         ),
       ),
       child: Row(
@@ -236,39 +237,83 @@ class _MissionsSheetState extends State<MissionsSheet>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  ach.title,
-                  style: TextStyle(
-                    color: isClassic ? AppTheme.darkText : Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        ach.title,
+                        style: TextStyle(
+                          color: isClassic ? AppTheme.darkText : Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    if (ach.isMaxLevel)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          'COMPLETED',
+                          style: TextStyle(color: Color(0xFF10B981), fontSize: 9, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                  ],
                 ),
+                const SizedBox(height: 2),
                 Text(
                   ach.description,
                   style: TextStyle(
                     color: isClassic ? AppTheme.subtitleText : Colors.white70,
-                    fontSize: 12,
+                    fontSize: 11,
                   ),
+                ),
+                const SizedBox(height: 6),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: ach.progress,
+                    backgroundColor: Colors.white12,
+                    color: ach.isUnlocked ? const Color(0xFFFFD700) : AppTheme.getButtonColor(theme),
+                    minHeight: 5,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '${ach.current} / ${ach.target}',
+                  style: const TextStyle(color: Colors.grey, fontSize: 10),
                 ),
               ],
             ),
           ),
           const SizedBox(width: 8),
-          if (ach.isClaimed)
-            const Text('Unlocked', style: TextStyle(color: Colors.grey, fontSize: 12))
-          else if (ach.isUnlocked)
+          if (ach.isMaxLevel)
+            const Icon(Icons.check_circle, color: Color(0xFF10B981), size: 22)
+          else if (isReadyToClaim)
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFFFD700),
                 foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
               onPressed: () => widget.controller.claimAchievementReward(ach),
-              child: Text('+${ach.rewardCoins} 🪙'),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('+${ach.rewardCoins} 🪙', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                  const Text('Level Up ▲', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold)),
+                ],
+              ),
             )
           else
-            Text('+${ach.rewardCoins} 🪙', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+            Text(
+              '+${ach.rewardCoins} 🪙',
+              style: const TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold),
+            ),
         ],
       ),
     );

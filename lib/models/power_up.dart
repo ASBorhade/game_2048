@@ -12,16 +12,18 @@ enum PowerUpType {
 }
 
 class PowerUpInventory {
+  static const int maxCapacity = 4;
+
   int undoCount;
   int hammerCount;
   int shuffleCount;
   int hintCount;
 
   PowerUpInventory({
-    this.undoCount = 3,
-    this.hammerCount = 2,
-    this.shuffleCount = 2,
-    this.hintCount = 3,
+    this.undoCount = 2,
+    this.hammerCount = 1,
+    this.shuffleCount = 1,
+    this.hintCount = 2,
   });
 
   int getCount(PowerUpType type) {
@@ -37,19 +39,21 @@ class PowerUpInventory {
     }
   }
 
+  bool isFull(PowerUpType type) => getCount(type) >= maxCapacity;
+
   void add(PowerUpType type, int amount) {
     switch (type) {
       case PowerUpType.undo:
-        undoCount += amount;
+        undoCount = (undoCount + amount).clamp(0, maxCapacity);
         break;
       case PowerUpType.hammer:
-        hammerCount += amount;
+        hammerCount = (hammerCount + amount).clamp(0, maxCapacity);
         break;
       case PowerUpType.shuffle:
-        shuffleCount += amount;
+        shuffleCount = (shuffleCount + amount).clamp(0, maxCapacity);
         break;
       case PowerUpType.hint:
-        hintCount += amount;
+        hintCount = (hintCount + amount).clamp(0, maxCapacity);
         break;
     }
   }
@@ -92,10 +96,10 @@ class PowerUpInventory {
 
   factory PowerUpInventory.fromJson(Map<String, dynamic> json) {
     return PowerUpInventory(
-      undoCount: json['undoCount'] as int? ?? 3,
-      hammerCount: json['hammerCount'] as int? ?? 2,
-      shuffleCount: json['shuffleCount'] as int? ?? 2,
-      hintCount: json['hintCount'] as int? ?? 3,
+      undoCount: (json['undoCount'] as int? ?? 2).clamp(0, maxCapacity),
+      hammerCount: (json['hammerCount'] as int? ?? 1).clamp(0, maxCapacity),
+      shuffleCount: (json['shuffleCount'] as int? ?? 1).clamp(0, maxCapacity),
+      hintCount: (json['hintCount'] as int? ?? 2).clamp(0, maxCapacity),
     );
   }
 }

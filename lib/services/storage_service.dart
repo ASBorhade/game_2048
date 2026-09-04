@@ -38,7 +38,7 @@ class StorageService {
   }
 
   // --- Coins & Economy ---
-  int loadCoins() => _prefs.getInt(_keyCoins) ?? 200; // Starting 200 bonus coins
+  int loadCoins() => _prefs.getInt(_keyCoins) ?? 20; // Balanced 20 starter coins
   Future<void> saveCoins(int amount) => _prefs.setInt(_keyCoins, amount);
 
   // --- Power-Up Inventory ---
@@ -57,7 +57,7 @@ class StorageService {
 
   // --- Unlocked Themes ---
   List<String> loadUnlockedThemes() {
-    return _prefs.getStringList(_keyUnlockedThemes) ?? ['aurora', 'classic'];
+    return _prefs.getStringList(_keyUnlockedThemes) ?? ['classic'];
   }
 
   Future<void> saveUnlockedThemes(List<String> themes) =>
@@ -87,11 +87,11 @@ class StorageService {
 
   List<Mission> _generateDefaultMissions() {
     return [
-      Mission(id: 'm1', type: MissionType.mergeTiles, target: 25),
-      Mission(id: 'm2', type: MissionType.reachTile, target: 128),
-      Mission(id: 'm3', type: MissionType.scorePoints, target: 2000),
-      Mission(id: 'm4', type: MissionType.makeCombo, target: 2),
-      Mission(id: 'm5', type: MissionType.usePowerUp, target: 2),
+      Mission(id: 'm1', type: MissionType.mergeTiles, target: 80),
+      Mission(id: 'm2', type: MissionType.reachTile, target: 512),
+      Mission(id: 'm3', type: MissionType.scorePoints, target: 8000),
+      Mission(id: 'm4', type: MissionType.makeCombo, target: 3),
+      Mission(id: 'm5', type: MissionType.usePowerUp, target: 4),
     ];
   }
 
@@ -99,9 +99,23 @@ class StorageService {
   List<Achievement> loadAchievements() {
     try {
       final str = _prefs.getString(_keyAchievements);
-      if (str == null) return Achievement.getInitialList();
+      final initial = Achievement.getInitialList();
+      if (str == null) return initial;
       final list = jsonDecode(str) as List<dynamic>;
-      return list.map((e) => Achievement.fromJson(e as Map<String, dynamic>)).toList();
+      final map = <String, Map<String, dynamic>>{};
+      for (final item in list) {
+        if (item is Map<String, dynamic> && item.containsKey('id')) {
+          map[item['id'] as String] = item;
+        }
+      }
+
+      return initial.map((ach) {
+        final saved = map[ach.id];
+        if (saved != null) {
+          return Achievement.fromJson(saved, ach.tiers);
+        }
+        return ach;
+      }).toList();
     } catch (_) {
       return Achievement.getInitialList();
     }
@@ -124,9 +138,9 @@ class StorageService {
   Future<void> saveDailyStreak(DailyStreak streak) =>
       _prefs.setString(_keyDailyStreak, jsonEncode(streak.toJson()));
 
-  // --- Lucky Spin Wheel Cooldown ---
-  int loadLastFreeSpinTime() => _prefs.getInt(_keyLastFreeSpin) ?? 0;
-  Future<void> saveLastFreeSpinTime(int timestamp) => _prefs.setInt(_keyLastFreeSpin, timestamp);
+  // --- Lucky Spin Wheel (1 Spin Per Day) ---
+  String loadLastSpinDate() => _prefs.getString(_keyLastFreeSpin) ?? '';
+  Future<void> saveLastSpinDate(String date) => _prefs.setString(_keyLastFreeSpin, date);
 
   // --- Career Stats ---
   Map<String, dynamic> loadCareerStats() {
@@ -165,7 +179,7 @@ class StorageService {
   int loadCompletedGamesCount() => _prefs.getInt(_keyCompletedGames) ?? 0;
   Future<void> saveCompletedGamesCount(int count) => _prefs.setInt(_keyCompletedGames, count);
 
-  String loadThemeName() => _prefs.getString(_keyTheme) ?? 'aurora';
+  String loadThemeName() => _prefs.getString(_keyTheme) ?? 'classic';
   Future<void> saveThemeName(String name) => _prefs.setString(_keyTheme, name);
 
   int loadBestScore() => _prefs.getInt(_keyBestScore) ?? 0;

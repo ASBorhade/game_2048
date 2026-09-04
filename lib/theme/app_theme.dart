@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 enum GameThemeType {
-  aurora('Neo-Aurora', Icons.auto_awesome, 0),
+  aurora('Neo-Aurora', Icons.auto_awesome, 800),
   cyberpunk('Cyberpunk', Icons.electric_bolt, 300),
   gold('Golden Royalty', Icons.stars, 1000),
   emerald('Emerald Nature', Icons.eco, 500),

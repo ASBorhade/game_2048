@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../config/ad_config.dart';
@@ -10,6 +12,11 @@ class AdService {
   bool _isInitialized = false;
   bool get isInitialized => _isInitialized;
 
+  final Completer<void> _initCompleter = Completer<void>();
+
+  /// Future that completes when the AdMob SDK is initialized.
+  Future<void> get ensureInitialized => _initCompleter.future;
+
   InterstitialAd? _interstitialAd;
   bool _isInterstitialLoading = false;
 
@@ -18,7 +25,10 @@ class AdService {
 
   /// Initializes Google Mobile Ads SDK and requests UMP consent
   Future<void> initialize() async {
-    if (_isInitialized) return;
+    if (_isInitialized) {
+      if (!_initCompleter.isCompleted) _initCompleter.complete();
+      return;
+    }
 
     try {
       // Initialize UMP Consent Information
@@ -45,6 +55,7 @@ class AdService {
     try {
       await MobileAds.instance.initialize();
       _isInitialized = true;
+      if (!_initCompleter.isCompleted) _initCompleter.complete();
       debugPrint('AdMob SDK initialized successfully');
 
       // Preload initial interstitial and rewarded ads
@@ -56,6 +67,7 @@ class AdService {
       }
     } catch (e) {
       debugPrint('MobileAds initialization failed: $e');
+      if (!_initCompleter.isCompleted) _initCompleter.complete();
     }
   }
 
@@ -169,45 +181,99 @@ class AdService {
     );
   }
 
-  /// Shows a rewarded ad. Executes [onRewarded] only upon verified reward callback.
+  /// Shows a rewarded ad. If the ad isn't ready yet, waits up to ~4.5 seconds
+  /// (3 retries × 1.5s) for it to load before giving up.
+  /// Executes [onRewarded] only upon verified reward callback.
   void showRewardedAd({
     required VoidCallback onRewarded,
     VoidCallback? onFailed,
     VoidCallback? onDismissed,
   }) {
     if (_rewardedAd != null) {
-      final ad = _rewardedAd!;
-      _rewardedAd = null;
-      bool userEarnedReward = false;
-
-      ad.fullScreenContentCallback = FullScreenContentCallback(
-        onAdDismissedFullScreenContent: (ad) {
-          ad.dispose();
-          if (userEarnedReward) {
-            onRewarded();
-          } else {
-            onDismissed?.call();
-          }
-          loadRewarded();
-        },
-        onAdFailedToShowFullScreenContent: (ad, error) {
-          ad.dispose();
-          onFailed?.call();
-          loadRewarded();
-        },
-      );
-
-      ad.show(
-        onUserEarnedReward: (AdWithoutView ad, RewardItem reward) {
-          userEarnedReward = true;
-          debugPrint('User earned reward: ${reward.amount} ${reward.type}');
-        },
+      _showRewardedAdNow(
+        onRewarded: onRewarded,
+        onFailed: onFailed,
+        onDismissed: onDismissed,
       );
     } else {
-      // Ad is not yet loaded, try loading for next time
+      // Ad is not ready — kick off a load and wait for it
       loadRewarded();
-      onFailed?.call();
+      _waitForRewardedAd(
+        onRewarded: onRewarded,
+        onFailed: onFailed,
+        onDismissed: onDismissed,
+      );
     }
+  }
+
+  /// Internal: actually shows the loaded rewarded ad.
+  void _showRewardedAdNow({
+    required VoidCallback onRewarded,
+    VoidCallback? onFailed,
+    VoidCallback? onDismissed,
+  }) {
+    final ad = _rewardedAd!;
+    _rewardedAd = null;
+    bool userEarnedReward = false;
+
+    ad.fullScreenContentCallback = FullScreenContentCallback(
+      onAdDismissedFullScreenContent: (ad) {
+        ad.dispose();
+        if (userEarnedReward) {
+          onRewarded();
+        } else {
+          onDismissed?.call();
+        }
+        loadRewarded();
+      },
+      onAdFailedToShowFullScreenContent: (ad, error) {
+        ad.dispose();
+        onFailed?.call();
+        loadRewarded();
+      },
+    );
+
+    ad.show(
+      onUserEarnedReward: (AdWithoutView ad, RewardItem reward) {
+        userEarnedReward = true;
+        debugPrint('User earned reward: ${reward.amount} ${reward.type}');
+      },
+    );
+  }
+
+  /// Waits for the rewarded ad to load with retries.
+  /// Retries up to [maxRetries] times with [retryDelay] between attempts.
+  void _waitForRewardedAd({
+    required VoidCallback onRewarded,
+    VoidCallback? onFailed,
+    VoidCallback? onDismissed,
+    int maxRetries = 3,
+    Duration retryDelay = const Duration(milliseconds: 1500),
+  }) {
+    int attempt = 0;
+
+    void tryAgain() {
+      attempt++;
+      Future.delayed(retryDelay, () {
+        if (_rewardedAd != null) {
+          _showRewardedAdNow(
+            onRewarded: onRewarded,
+            onFailed: onFailed,
+            onDismissed: onDismissed,
+          );
+        } else if (attempt < maxRetries) {
+          // Ensure a load is in progress
+          loadRewarded();
+          tryAgain();
+        } else {
+          // Exhausted retries — give up
+          debugPrint('Rewarded ad failed to load after $maxRetries retries');
+          onFailed?.call();
+        }
+      });
+    }
+
+    tryAgain();
   }
 
   bool get isRewardedAdReady => _rewardedAd != null;
@@ -219,3 +285,4 @@ class AdService {
     _rewardedAd = null;
   }
 }
+

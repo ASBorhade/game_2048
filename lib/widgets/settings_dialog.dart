@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../config/ad_config.dart';
 import '../game/game_controller.dart';
 import '../theme/app_theme.dart';
+import 'theme_store_sheet.dart';
 
 class SettingsDialog extends StatelessWidget {
   final GameController controller;
@@ -203,56 +204,39 @@ class SettingsDialog extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Theme Selection Chips
-                Text(
-                  'Theme Style',
-                  style: TextStyle(
-                    color: isClassic
-                        ? AppTheme.darkText
-                        : AppTheme.getSubtitleColor(theme),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
+                // Theme Store Navigation Tile
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    Icons.palette,
+                    color: AppTheme.getButtonColor(theme),
                   ),
+                  title: Text(
+                    'Theme Store',
+                    style: TextStyle(
+                      color: isClassic ? AppTheme.darkText : Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Current: ${controller.theme.label} (Tap to change in Store)',
+                    style: TextStyle(
+                      color: isClassic
+                          ? AppTheme.subtitleText
+                          : AppTheme.getSubtitleColor(theme),
+                      fontSize: 11,
+                    ),
+                  ),
+                  trailing: Icon(
+                    Icons.chevron_right,
+                    color: isClassic ? AppTheme.darkText : Colors.white60,
+                    size: 20,
+                  ),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    ThemeStoreSheet.show(context, controller);
+                  },
                 ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: GameThemeType.values.map((t) {
-                    final isSelected = controller.theme == t;
-                    return ChoiceChip(
-                      avatar: Icon(
-                        t.icon,
-                        size: 16,
-                        color: isSelected
-                            ? Colors.white
-                            : (isClassic
-                                ? AppTheme.darkText
-                                : AppTheme.getSubtitleColor(theme)),
-                      ),
-                      label: Text(t.label),
-                      selected: isSelected,
-                      selectedColor: AppTheme.getButtonColor(theme),
-                      backgroundColor: isClassic
-                          ? const Color(0xFFEDE0C8)
-                          : const Color(0x30FFFFFF),
-                      labelStyle: TextStyle(
-                        color: isSelected
-                            ? Colors.white
-                            : (isClassic ? AppTheme.darkText : Colors.white70),
-                        fontWeight:
-                            isSelected ? FontWeight.bold : FontWeight.normal,
-                        fontSize: 12,
-                      ),
-                      onSelected: (selected) {
-                        if (selected) {
-                          controller.setTheme(t);
-                        }
-                      },
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 14),
                 const Divider(color: Colors.white12),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,

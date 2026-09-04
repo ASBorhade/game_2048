@@ -1,10 +1,10 @@
 enum MissionType {
-  mergeTiles('Merge Master', 'Merge a total of {target} tiles', 20, 50),
-  reachTile('Tile Climber', 'Reach the {target} tile', 256, 75),
-  scorePoints('High Roller', 'Score {target} points in a match', 3000, 100),
-  usePowerUp('Power Player', 'Use {target} power-ups in gameplay', 3, 60),
-  playGames('Dedicated Player', 'Play {target} game matches', 3, 50),
-  makeCombo('Combo King', 'Achieve a Combo x2 or higher', 2, 80);
+  mergeTiles('Merge Master', 'Merge {target} tiles', 80, 15),
+  reachTile('Tile Climber', 'Reach the {target} tile in a match', 512, 20),
+  scorePoints('High Roller', 'Score {target} points in a match', 8000, 25),
+  usePowerUp('Power Player', 'Use {target} power-ups in gameplay', 4, 15),
+  playGames('Dedicated Player', 'Play {target} full game matches', 5, 15),
+  makeCombo('Combo King', 'Achieve a Combo x2 or higher', 3, 20);
 
   final String title;
   final String descriptionTemplate;

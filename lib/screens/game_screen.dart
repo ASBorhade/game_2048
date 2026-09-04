@@ -368,7 +368,7 @@ class GameScreen extends StatelessWidget {
                                   ],
                                 ),
                                 child: Text(
-                                  '🔥 COMBO x${controller.lastComboCount}! +${controller.lastComboCount * 10} 🪙',
+                                  '🔥 COMBO x${controller.lastComboCount}!',
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w900,

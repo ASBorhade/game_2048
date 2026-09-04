@@ -81,28 +81,51 @@ class PowerUpBar extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            Row(
-              children: [
-                const Icon(Icons.monetization_on, color: Color(0xFFFFD700), size: 18),
-                const SizedBox(width: 6),
-                Text(
-                  'Price: ${type.coinCost} Coins',
-                  style: const TextStyle(
-                    color: Color(0xFFFFD700),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                  ),
+            if (controller.inventory.isFull(type))
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEF4444).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                const Spacer(),
-                Text(
-                  'Your Balance: ${controller.coins}',
-                  style: TextStyle(
-                    color: isClassic ? AppTheme.darkText : Colors.white70,
-                    fontSize: 12,
-                  ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Color(0xFFEF4444), size: 16),
+                    SizedBox(width: 6),
+                    Text(
+                      'Inventory is full (Max 4). Use one first!',
+                      style: TextStyle(
+                        color: Color(0xFFEF4444),
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              )
+            else
+              Row(
+                children: [
+                  const Icon(Icons.monetization_on, color: Color(0xFFFFD700), size: 18),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Price: ${type.coinCost} Coins',
+                    style: const TextStyle(
+                      color: Color(0xFFFFD700),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '${controller.inventory.getCount(type)}/4 Owned',
+                    style: TextStyle(
+                      color: isClassic ? AppTheme.darkText : Colors.white70,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
           ],
         ),
         actions: [
@@ -116,7 +139,7 @@ class PowerUpBar extends StatelessWidget {
               backgroundColor: AppTheme.getButtonColor(theme),
               foregroundColor: Colors.white,
             ),
-            onPressed: controller.coins >= type.coinCost
+            onPressed: (!controller.inventory.isFull(type) && controller.coins >= type.coinCost)
                 ? () {
                     Navigator.of(ctx).pop();
                     controller.buyPowerUp(type);
@@ -128,7 +151,7 @@ class PowerUpBar extends StatelessWidget {
                     );
                   }
                 : null,
-            child: Text('Buy (${type.coinCost} 🪙)'),
+            child: Text(controller.inventory.isFull(type) ? 'Full' : 'Buy (${type.coinCost} 🪙)'),
           ),
           // Option 2: Watch Ad for free item
           OutlinedButton.icon(
@@ -138,34 +161,36 @@ class PowerUpBar extends StatelessWidget {
               foregroundColor: const Color(0xFF10B981),
               side: const BorderSide(color: Color(0xFF10B981)),
             ),
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              controller.setAdLoading(true);
-              AdService().showRewardedAd(
-                onRewarded: () {
-                  controller.setAdLoading(false);
-                  controller.inventory.add(type, 1);
-                  controller.storageService.saveInventory(controller.inventory);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Free ${type.title} unlocked!'),
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
-                },
-                onFailed: () {
-                  controller.setAdLoading(false);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Ad is loading, please try again shortly.'),
-                    ),
-                  );
-                },
-                onDismissed: () {
-                  controller.setAdLoading(false);
-                },
-              );
-            },
+            onPressed: controller.inventory.isFull(type)
+                ? null
+                : () {
+                    Navigator.of(ctx).pop();
+                    controller.setAdLoading(true);
+                    AdService().showRewardedAd(
+                      onRewarded: () {
+                        controller.setAdLoading(false);
+                        controller.inventory.add(type, 1);
+                        controller.storageService.saveInventory(controller.inventory);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Free ${type.title} unlocked!'),
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                      onFailed: () {
+                        controller.setAdLoading(false);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Ad is loading, please try again shortly.'),
+                          ),
+                        );
+                      },
+                      onDismissed: () {
+                        controller.setAdLoading(false);
+                      },
+                    );
+                  },
           ),
         ],
       ),

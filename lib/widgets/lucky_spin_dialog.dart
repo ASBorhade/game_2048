@@ -44,14 +44,14 @@ class _LuckySpinDialogState extends State<LuckySpinDialog>
   SpinPrize? _wonPrize;
 
   static const List<SpinPrize> _prizes = [
-    SpinPrize(label: '50 🪙', coins: 50, color: Color(0xFF3B82F6)),
+    SpinPrize(label: '10 🪙', coins: 10, color: Color(0xFF3B82F6)),
     SpinPrize(label: '🔨 Hammer', powerUp: PowerUpType.hammer, color: Color(0xFFEF4444)),
-    SpinPrize(label: '100 🪙', coins: 100, color: Color(0xFF10B981)),
+    SpinPrize(label: '15 🪙', coins: 15, color: Color(0xFF10B981)),
     SpinPrize(label: '💡 Hint', powerUp: PowerUpType.hint, color: Color(0xFF8B5CF6)),
-    SpinPrize(label: '250 🪙', coins: 250, color: Color(0xFFF59E0B)),
+    SpinPrize(label: '25 🪙', coins: 25, color: Color(0xFFF59E0B)),
     SpinPrize(label: '🔀 Shuffle', powerUp: PowerUpType.shuffle, color: Color(0xFFEC4899)),
-    SpinPrize(label: '↩️ Undo x2', powerUp: PowerUpType.undo, color: Color(0xFF06B6D4)),
-    SpinPrize(label: '🏆 500 🪙', coins: 500, color: Color(0xFFFFD700)),
+    SpinPrize(label: '↩️ Undo', powerUp: PowerUpType.undo, color: Color(0xFF06B6D4)),
+    SpinPrize(label: '🏆 50 🪙', coins: 50, color: Color(0xFFFFD700)),
   ];
 
   @override
@@ -76,9 +76,19 @@ class _LuckySpinDialogState extends State<LuckySpinDialog>
     final winningIndex = rand.nextInt(_prizes.length);
     final segmentAngle = (2 * pi) / _prizes.length;
 
-    // Additional spins + angle offset to land in the center of winning segment at top
+    // Segment i center is at angle (-pi/2 + (i + 0.5) * segmentAngle).
+    // Rotating clockwise by angle brings the center to -pi/2 (top pointer) when:
+    // angle (mod 2*pi) == (2 * pi - (winningIndex + 0.5) * segmentAngle) % (2 * pi)
+    final targetMod = (2 * pi - ((winningIndex + 0.5) * segmentAngle)) % (2 * pi);
+    final currentMod = _currentRotation % (2 * pi);
+    double diff = targetMod - currentMod;
+    if (diff <= 0) {
+      diff += 2 * pi;
+    }
+
     final extraRounds = 5 + rand.nextInt(3);
-    final targetAngle = (extraRounds * 2 * pi) + (winningIndex * segmentAngle) + (segmentAngle / 2);
+    final totalDelta = (extraRounds * 2 * pi) + diff;
+    final endRotation = _currentRotation + totalDelta;
 
     setState(() {
       _isSpinning = true;
@@ -87,14 +97,14 @@ class _LuckySpinDialogState extends State<LuckySpinDialog>
 
     _animation = Tween<double>(
       begin: _currentRotation,
-      end: _currentRotation + targetAngle,
+      end: endRotation,
     ).animate(CurvedAnimation(
       parent: _spinController,
       curve: Curves.easeOutCubic,
     ));
 
     _spinController.forward(from: 0.0).then((_) {
-      _currentRotation = _animation.value % (2 * pi);
+      _currentRotation = endRotation % (2 * pi);
       final prize = _prizes[winningIndex];
 
       widget.controller.spinPrizeEarned(
@@ -120,7 +130,7 @@ class _LuckySpinDialogState extends State<LuckySpinDialog>
       onFailed: () {
         widget.controller.setAdLoading(false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ad loading, please try again.')),
+          const SnackBar(content: Text('Ad is loading, please try again shortly.')),
         );
       },
       onDismissed: () {
@@ -173,7 +183,9 @@ class _LuckySpinDialogState extends State<LuckySpinDialog>
                 AnimatedBuilder(
                   animation: _spinController,
                   builder: (context, child) {
-                    final angle = _isSpinning ? _animation.value : _currentRotation;
+                    final angle = _isSpinning
+                        ? _animation.value
+                        : _currentRotation;
                     return Transform.rotate(
                       angle: angle,
                       child: CustomPaint(
@@ -239,34 +251,47 @@ class _LuckySpinDialogState extends State<LuckySpinDialog>
 
           const SizedBox(height: 16),
 
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ElevatedButton.icon(
-                icon: const Icon(Icons.play_arrow, size: 18),
-                label: const Text('Free Spin'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.getButtonColor(theme),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                onPressed: _isSpinning ? null : _spinWheel,
+          if (widget.controller.canSpinToday)
+            ElevatedButton.icon(
+              icon: const Icon(Icons.casino, size: 18),
+              label: const Text('Free Daily Spin'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.getButtonColor(theme),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
-              const SizedBox(width: 8),
-              OutlinedButton.icon(
-                icon: const Icon(Icons.play_circle_fill, size: 18),
-                label: const Text('Spin (Ad)'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF10B981),
-                  side: const BorderSide(color: Color(0xFF10B981)),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                onPressed: _isSpinning ? null : _handleSpinWithAd,
+              onPressed: _isSpinning ? null : _spinWheel,
+            )
+          else ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: isClassic ? const Color(0xFFEDE0C8) : const Color(0x18FFFFFF),
+                borderRadius: BorderRadius.circular(8),
               ),
-            ],
-          ),
+              child: const Text(
+                '✅ Free Daily Spin Claimed',
+                style: TextStyle(
+                  color: Color(0xFF10B981),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.play_circle_fill, size: 18),
+              label: const Text('Watch Ad for Extra Spin 🎬'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF10B981),
+                side: const BorderSide(color: Color(0xFF10B981), width: 1.5),
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: _isSpinning ? null : _handleSpinWithAd,
+            ),
+          ],
         ],
       ),
       actions: [

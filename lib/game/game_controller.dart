@@ -46,8 +46,8 @@ class GameController extends ChangeNotifier {
   Timer? _timedTimer;
   int _timedSecondsRemaining = 120;
 
-  GameThemeType _theme = GameThemeType.aurora;
-  List<String> _unlockedThemes = ['aurora', 'classic'];
+  GameThemeType _theme = GameThemeType.classic;
+  List<String> _unlockedThemes = ['classic'];
 
   int _coins = 200;
   PowerUpInventory _inventory = PowerUpInventory();
@@ -145,7 +145,7 @@ class GameController extends ChangeNotifier {
     final themeName = storageService.loadThemeName();
     _theme = GameThemeType.values.firstWhere(
       (t) => t.name == themeName,
-      orElse: () => GameThemeType.aurora,
+      orElse: () => GameThemeType.classic,
     );
 
     _checkDailyStreak();
@@ -234,7 +234,7 @@ class GameController extends ChangeNotifier {
       storageService.saveCompletedGamesCount(_completedGamesCount);
       _updateStats(gamesPlayedInc: 1);
       _checkMissions(MissionType.playGames, 1);
-      _checkAchievements('play_10_games', _careerStats['gamesPlayed'] ?? 1);
+      _checkAchievements('games_played', _careerStats['gamesPlayed'] ?? 1);
 
       if (!_adsRemoved &&
           AdConfig.enableInterstitialAds &&
@@ -305,15 +305,27 @@ class GameController extends ChangeNotifier {
     _undoSnapshot = previousSnapshot;
     _tiles = result.tiles;
     _score += result.scoreAdded;
-    _scoreAddedThisMove = result.scoreAdded;
-    _lastComboCount = result.comboCount;
-
-    // Coins reward from regular merges and multi-merge combos
-    int earnedCoins = (result.scoreAdded ~/ 20).clamp(0, 50);
+    // Coins reward: very rare & earned strictly on major milestone merges (256+)
+    int earnedCoins = 0;
+    if (result.scoreAdded >= 256) {
+      if (result.scoreAdded >= 4096) {
+        earnedCoins += 25;
+      } else if (result.scoreAdded >= 2048) {
+        earnedCoins += 10;
+      } else if (result.scoreAdded >= 1024) {
+        earnedCoins += 5;
+      } else if (result.scoreAdded >= 512) {
+        earnedCoins += 2;
+      } else if (result.scoreAdded >= 256) {
+        earnedCoins += 1;
+      }
+    }
+    if (result.comboCount >= 3) {
+      earnedCoins += (result.comboCount == 3 ? 1 : 2);
+    }
     if (result.comboCount >= 2) {
-      earnedCoins += (result.comboCount * 10);
       _checkMissions(MissionType.makeCombo, result.comboCount);
-      _checkAchievements('combo_x3', result.comboCount);
+      _checkAchievements('combos', result.comboCount);
     }
     if (earnedCoins > 0) {
       addCoins(earnedCoins);
@@ -330,7 +342,9 @@ class GameController extends ChangeNotifier {
     _checkMissions(MissionType.mergeTiles, result.comboCount);
     _checkMissions(MissionType.scorePoints, _score);
     _checkMissions(MissionType.reachTile, _getMaxTileValue());
-    _checkTileAchievements(_getMaxTileValue());
+    _checkAchievements('reach_tile', _getMaxTileValue());
+    _checkAchievements('high_score', _score);
+    _checkAchievements('total_merges', _careerStats['totalMerges'] ?? 0);
 
     if (_score > _bestScore) {
       _bestScore = _score;
@@ -450,7 +464,15 @@ class GameController extends ChangeNotifier {
     }
   }
 
+  bool get canSpinToday {
+    final now = DateTime.now();
+    final todayStr =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    return storageService.loadLastSpinDate() != todayStr;
+  }
+
   bool buyPowerUp(PowerUpType type) {
+    if (_inventory.isFull(type)) return false;
     if (_coins >= type.coinCost) {
       _coins -= type.coinCost;
       storageService.saveCoins(_coins);
@@ -537,7 +559,10 @@ class GameController extends ChangeNotifier {
       _inventory.add(powerUp, 1);
       storageService.saveInventory(_inventory);
     }
-    storageService.saveLastFreeSpinTime(DateTime.now().millisecondsSinceEpoch);
+    final now = DateTime.now();
+    final todayStr =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    storageService.saveLastSpinDate(todayStr);
     notifyListeners();
   }
 
@@ -565,24 +590,19 @@ class GameController extends ChangeNotifier {
   }
 
   void _checkAchievements(String id, int progress) {
+    bool changed = false;
     for (final a in _achievements) {
-      if (a.id == id && !a.isUnlocked) {
-        a.current = progress;
-        if (a.current >= a.target) {
-          a.isUnlocked = true;
-          storageService.saveAchievements(_achievements);
-          notifyListeners();
+      if (a.id == id && !a.isMaxLevel) {
+        if (progress > a.current) {
+          a.current = progress;
+          changed = true;
         }
       }
     }
-  }
-
-  void _checkTileAchievements(int maxTile) {
-    if (maxTile >= 128) _checkAchievements('reach_128', maxTile);
-    if (maxTile >= 512) _checkAchievements('reach_512', maxTile);
-    if (maxTile >= 1024) _checkAchievements('reach_1024', maxTile);
-    if (maxTile >= 2048) _checkAchievements('reach_2048', maxTile);
-    if (maxTile >= 4096) _checkAchievements('reach_4096', maxTile);
+    if (changed) {
+      storageService.saveAchievements(_achievements);
+      notifyListeners();
+    }
   }
 
   void claimMissionReward(Mission mission) {
@@ -595,9 +615,10 @@ class GameController extends ChangeNotifier {
   }
 
   void claimAchievementReward(Achievement achievement) {
-    if (achievement.isUnlocked && !achievement.isClaimed) {
-      achievement.isClaimed = true;
-      addCoins(achievement.rewardCoins);
+    if (achievement.isUnlocked && !achievement.isClaimed && !achievement.isMaxLevel) {
+      final reward = achievement.rewardCoins;
+      addCoins(reward);
+      achievement.advanceLevel();
       storageService.saveAchievements(_achievements);
       notifyListeners();
     }
