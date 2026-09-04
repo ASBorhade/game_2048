@@ -1,8 +1,6 @@
-import 'package:flutter/foundation.dart';
-
 class AdConfig {
-  /// Toggle to false when building for production release with real AdMob Ad Units
-  static const bool isTestMode = kDebugMode || true;
+  /// Set to false to use your real AdMob Ad Units (matching your AndroidManifest App ID)
+  static const bool isTestMode = false;
 
   // Google's Official Test Ad Unit IDs for Android
   static const String testBannerAdUnitId =
@@ -12,13 +10,13 @@ class AdConfig {
   static const String testRewardedAdUnitId =
       'ca-app-pub-3940256099942544/5224354917';
 
-  // Production Ad Unit IDs - Replace these with your real AdMob Ad Unit IDs
+  // Production Ad Unit IDs
   static const String prodBannerAdUnitId =
-      'ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX';
+      'ca-app-pub-3021631976531996/8815401773';
   static const String prodInterstitialAdUnitId =
-      'ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX';
+      'ca-app-pub-3021631976531996/4876156765';
   static const String prodRewardedAdUnitId =
-      'ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX';
+      'ca-app-pub-3021631976531996/5536783111';
 
   /// Get active banner ad unit id based on test / production configuration
   static String get bannerAdUnitId =>
