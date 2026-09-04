@@ -8,6 +8,8 @@ class GameTileWidget extends StatefulWidget {
   final double cellSpacing;
   final double boardPadding;
   final GameThemeType theme;
+  final bool isTargetable;
+  final VoidCallback? onTap;
 
   const GameTileWidget({
     super.key,
@@ -16,6 +18,8 @@ class GameTileWidget extends StatefulWidget {
     required this.cellSpacing,
     required this.boardPadding,
     required this.theme,
+    this.isTargetable = false,
+    this.onTap,
   });
 
   @override
@@ -96,32 +100,45 @@ class _GameTileWidgetState extends State<GameTileWidget>
       top: top,
       width: widget.tileSize,
       height: widget.tileSize,
-      child: AnimatedBuilder(
-        animation: _scaleAnimation,
-        builder: (context, child) {
-          return Transform.scale(
-            scale: _scaleAnimation.value,
-            child: child,
-          );
-        },
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: style.gradient,
-            borderRadius: BorderRadius.circular(isClassic ? 6 : 12),
-            border: style.border,
-            boxShadow: style.shadows,
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            '${widget.tile.value}',
-            style: TextStyle(
-              color: style.textColor,
-              fontSize: AppTheme.getTileFontSize(
-                widget.tile.value,
-                widget.tileSize,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedBuilder(
+          animation: _scaleAnimation,
+          builder: (context, child) {
+            return Transform.scale(
+              scale: _scaleAnimation.value,
+              child: child,
+            );
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: style.gradient,
+              borderRadius: BorderRadius.circular(isClassic ? 6 : (widget.tileSize < 60 ? 8 : 12)),
+              border: widget.isTargetable
+                  ? Border.all(color: const Color(0xFFEF4444), width: 2.5)
+                  : style.border,
+              boxShadow: widget.isTargetable
+                  ? [
+                      const BoxShadow(
+                        color: Color(0xFFEF4444),
+                        blurRadius: 12,
+                        spreadRadius: 2,
+                      ),
+                    ]
+                  : style.shadows,
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              '${widget.tile.value}',
+              style: TextStyle(
+                color: style.textColor,
+                fontSize: AppTheme.getTileFontSize(
+                  widget.tile.value,
+                  widget.tileSize,
+                ),
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.5,
               ),
-              fontWeight: FontWeight.w900,
-              letterSpacing: -0.5,
             ),
           ),
         ),

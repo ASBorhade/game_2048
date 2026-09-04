@@ -6,7 +6,7 @@ import 'package:game_2048/services/storage_service.dart';
 import 'package:game_2048/services/audio_feedback_service.dart';
 
 void main() {
-  testWidgets('2048 UI smoke test', (WidgetTester tester) async {
+  testWidgets('2048 UI & Gamification smoke test', (WidgetTester tester) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     final storageService = StorageService(prefs);
@@ -26,8 +26,11 @@ void main() {
     expect(find.text('SCORE'), findsOneWidget);
     expect(find.text('BEST'), findsOneWidget);
 
-    // Verify New Game button exists
-    expect(find.text('New Game'), findsOneWidget);
+    // Verify Power-Up dock buttons exist
+    expect(find.text('Undo'), findsOneWidget);
+    expect(find.text('Hammer'), findsOneWidget);
+    expect(find.text('Shuffle'), findsOneWidget);
+    expect(find.text('AI Hint'), findsOneWidget);
 
     // Verify 2 starting tiles exist
     expect(controller.tiles.length, 2);
